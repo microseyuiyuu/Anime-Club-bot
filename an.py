@@ -7,7 +7,7 @@ bot = commands.Bot(command_prefix='!')
 invites = {}
 channel_id = None
 GUILD_ID = YOUR_GUILD_ID
-invite_creators = {}  # 添加这行，用于存储邀请链接的创建者
+invite_creators = {}
 
 def load_data():
     global invites, channel_id, invite_creators
@@ -16,11 +16,11 @@ def load_data():
             data = json.load(f)
             invites = data.get('invites', {})
             channel_id = data.get('channel_id', None)
-            invite_creators = data.get('invite_creators', {})  # 添加这行
+            invite_creators = data.get('invite_creators', {})
     except FileNotFoundError:
         invites = {}
         channel_id = None
-        invite_creators = {}  # 添加这行
+        invite_creators = {}
 
 def save_data():
     global invites, channel_id, invite_creators
@@ -28,13 +28,13 @@ def save_data():
         json.dump({
             'invites': invites,
             'channel_id': channel_id,
-            'invite_creators': invite_creators  # 添加这行
+            'invite_creators': invite_creators
         }, f, ensure_ascii=False, indent=4)
 
 @bot.slash_command(name='邀請建立', description='創建一個邀請鏈接', guild_ids=[GUILD_ID])
 async def create_invite(ctx):
     invite = await ctx.channel.create_invite(max_age=0, max_uses=0)
-    invite_creators[invite.code] = ctx.author.id  # 保存创建者信息
+    invite_creators[invite.code] = ctx.author.id
     save_data()
     await ctx.respond(f'邀請鏈接：{invite.url}')
 
@@ -55,7 +55,7 @@ async def leaderboard(ctx):
 async def reset_invites(ctx):
     global invites, invite_creators
     invites = {}
-    invite_creators = {}  # 添加这行
+    invite_creators = {}
     save_data()
     await ctx.respond('所有邀請數據已重置。')
 
@@ -81,41 +81,16 @@ async def on_member_join(member):
     if channel_id:
         channel = bot.get_channel(channel_id)
         if channel:
-            inviter = None
-            for invite in await member.guild.invites():
-                if invite.uses > invites.get(str(invite.inviter.id), 0):
-                    inviter = invite.inviter
-                    invites[str(inviter.id)] = invite.uses
-                    save_data()
-                    break
-            if inviter:
-                invites[str(inviter.id)] = invites.get(str(inviter.id), 0) + 1
-                save_data()
-                await channel.send(f'🎉 歡迎 {member.mention} 進入伺服器！這位新成員是由 <@{inviter.id}> 邀請進來的。')
-            else:
-                await channel.send(f'🎉 歡迎 {member.mention} 進入伺服器！')
-
-@bot.event
-async def on_invite_create(invite):
-    # 保存邀请创建者的信息
-    invite_creators[invite.code] = invite.inviter.id
-    save_data()
-
-@bot.event
-async def on_member_join(member):
-    global invites
-    if channel_id:
-        channel = bot.get_channel(channel_id)
-        if channel:
-            inviter = None
+            inviter_id = None
             for invite in await member.guild.invites():
                 if invite.code in invite_creators:
                     inviter_id = invite_creators[invite.code]
-                    inviter = bot.get_user(inviter_id)
-                    invites[str(inviter.id)] = invites.get(str(inviter.id), 0) + 1
-                    save_data()
                     break
-            if inviter:
+
+            if inviter_id:
+                inviter = bot.get_user(inviter_id)
+                invites[str(inviter_id)] = invites.get(str(inviter_id), 0) + 1
+                save_data()
                 await channel.send(f'🎉 歡迎 {member.mention} 進入伺服器！這位新成員是由 <@{inviter.id}> 邀請進來的。')
             else:
                 await channel.send(f'🎉 歡迎 {member.mention} 進入伺服器！')
